@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: Unlicensed
+
+/*Cthulhu token--
+Altar is the development, marketing and community support walle,
+Furnace is the burning process and sends tokens to the zero adress
+There are anti-whale functions implemented in the contrat as:
+Max wallet size ; refers to how much token one wallet can hold
+Max transaction ; refers to how much token can be bought or sold in a single transaction  */
 pragma solidity ^0.6.12;
 
 interface IERC20 {
@@ -431,11 +438,11 @@ contract CthulhuToken is Context, IERC20, Ownable {
     string private _symbol = "CTHL";
     uint8 private _decimals = 9;
 
-    uint256 public _burnFee = 2;
-    uint256 private _previousBurnFee = _burnFee;
+    uint256 public _furnaceFee = 2;
+    uint256 private _previousFurnaceFee = _furnaceFee;
 
-    uint256 public _marketingFee = 1;
-    uint256 private _previousMarketingFee = _marketingFee;
+    uint256 public _altarFee = 1;
+    uint256 private _previousAltarFee = _altarFee;
     
     uint256 public _taxFee = 5;
     uint256 private _previousTaxFee = _taxFee;
@@ -443,7 +450,7 @@ contract CthulhuToken is Context, IERC20, Ownable {
     uint256 public _liquidityFee = 2;
     uint256 private _previousLiquidityFee = _liquidityFee;
 
-    address public marketingWallet = 0x104a4AA679bCc43ec7ea522F67F2F59Ee3f110b9;
+    address public altarWallet = 0x104a4AA679bCc43ec7ea522F67F2F59Ee3f110b9;
 
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public immutable uniswapV2Pair;
@@ -617,12 +624,12 @@ contract CthulhuToken is Context, IERC20, Ownable {
         _liquidityFee = liquidityFee;
     }
 
-    function setBurnFeePercent(uint256 burnFee) external onlyOwner() {
-        _burnFee = burnFee;
+    function setFurnaceFeePercent(uint256 furnaceFee) external onlyOwner() {
+        _furnaceFee = furnaceFee;
     }
 
-    function setMarketingFeePercent(uint256 fee) external onlyOwner() {
-        _marketingFee = fee;
+    function setAltarFeePercent(uint256 fee) external onlyOwner() {
+        _altarFee = fee;
     }
    
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
@@ -702,14 +709,14 @@ contract CthulhuToken is Context, IERC20, Ownable {
         );
     }
 
-    function calculateBurnFee(uint256 _amount) private view returns (uint256) {
-        return _amount.mul(_burnFee).div(
+    function calculateFurnaceFee(uint256 _amount) private view returns (uint256) {
+        return _amount.mul(_furnaceFee).div(
             10**2
         );
     }
 
-    function calculateMarketingFee(uint256 _amount) private view returns (uint256) {
-        return _amount.mul(_marketingFee).div(
+    function calculateAltarFee(uint256 _amount) private view returns (uint256) {
+        return _amount.mul(_altarFee).div(
             10**2
         );
     }
@@ -722,24 +729,24 @@ contract CthulhuToken is Context, IERC20, Ownable {
     }
     
     function removeAllFee() private {
-        if(_taxFee == 0 && _liquidityFee == 0 && _marketingFee == 0 && _burnFee == 0) return;
+        if(_taxFee == 0 && _liquidityFee == 0 && _altarFee == 0 && _furnaceFee == 0) return;
         
         _previousTaxFee = _taxFee;
         _previousLiquidityFee = _liquidityFee;
-        _previousMarketingFee = _marketingFee;
-        _previousBurnFee = _burnFee;
+        _previousAltarFee = _altarFee;
+        _previousFurnaceFee = _furnaceFee;
         
         _taxFee = 0;
         _liquidityFee = 0;
-        _marketingFee = 0;
-        _burnFee = 0;
+        _altarFee = 0;
+        _furnaceFee = 0;
     }
     
     function restoreAllFee() private {
         _taxFee = _previousTaxFee;
         _liquidityFee = _previousLiquidityFee;
-        _marketingFee = _previousMarketingFee;
-        _burnFee = _previousBurnFee;
+        _altarFee = _previousAltarFee;
+        _furnaceFee = _previousFurnaceFee;
     }
     
     function isExcludedFromFee(address account) public view returns(bool) {
@@ -853,36 +860,36 @@ contract CthulhuToken is Context, IERC20, Ownable {
         if(!takeFee)
             removeAllFee();
 
-        uint256 burnAmount = 0;
-        uint256 marketingAmount = 0;
+        uint256 furnaceAmount = 0;
+        uint256 altarAmount = 0;
         if(sender != owner() && recipient != owner() && sender!= address(this))
         {
-            burnAmount = calculateBurnFee(amount);
-            marketingAmount = calculateMarketingFee(amount);
+            furnaceAmount = calculateFurnaceFee(amount);
+            altarAmount = calculateAltarFee(amount);
         }
 
 
         
         if (_isExcluded[sender] && !_isExcluded[recipient]) {
-            _transferFromExcluded(sender, recipient, amount.sub(burnAmount).sub(marketingAmount));
+            _transferFromExcluded(sender, recipient, amount.sub(furnaceAmount).sub(altarAmount));
         } else if (!_isExcluded[sender] && _isExcluded[recipient]) {
-            _transferToExcluded(sender, recipient, amount.sub(burnAmount).sub(marketingAmount));
+            _transferToExcluded(sender, recipient, amount.sub(furnaceAmount).sub(altarAmount));
         } else if (!_isExcluded[sender] && !_isExcluded[recipient]) {
-            _transferStandard(sender, recipient, amount.sub(burnAmount).sub(marketingAmount));
+            _transferStandard(sender, recipient, amount.sub(furnaceAmount).sub(altarAmount));
         } else if (_isExcluded[sender] && _isExcluded[recipient]) {
-            _transferBothExcluded(sender, recipient, amount.sub(burnAmount).sub(marketingAmount));
+            _transferBothExcluded(sender, recipient, amount.sub(furnaceAmount).sub(altarAmount));
         } else {
-            _transferStandard(sender, recipient, amount.sub(burnAmount).sub(marketingAmount));
+            _transferStandard(sender, recipient, amount.sub(furnaceAmount).sub(altarAmount));
         }
 
         removeAllFee();
 
-        if(burnAmount > 0) {
-            _transferStandard(sender, address(0), burnAmount);
+        if(furnaceAmount > 0) {
+            _transferStandard(sender, address(0), furnaceAmount);
         }
 
-        if(marketingAmount > 0) {
-            _transferStandard(sender, marketingWallet, marketingAmount);
+        if(altarAmount > 0) {
+            _transferStandard(sender, altarWallet, altarAmount);
         }
 
         restoreAllFee();
